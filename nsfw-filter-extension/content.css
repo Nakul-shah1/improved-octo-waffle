@@ -1,0 +1,30 @@
+/**
+ * NSFW Filter - Content Styles
+ * Minimal styles for blocked content indicators.
+ */
+
+[data-nsfw-blocked="true"] {
+  position: relative !important;
+}
+
+[data-nsfw-blocked="true"]::after {
+  content: '🛡️ Blocked';
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(233, 69, 96, 0.9);
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+[data-nsfw-blocked="true"][data-nsfw-revealed="true"]::after {
+  content: '⚠️ NSFW';
+  background: rgba(255, 152, 0, 0.9);
+}

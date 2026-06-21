@@ -1,46 +1,49 @@
 /**
  * TensorFlow.js backend loader with WebGPU priority, WebGL fallback.
  * This script must load before content.js.
+ * 
+ * Loading order: WebGPU → WebGL → CPU
  */
 
-// Configure TF.js to use WebGPU first, then WebGL, then CPU
-async function initTF() {
-  // Dynamically import TF.js from CDN (bundled approach for MV3)
+(async function initTF() {
   if (window.__nsfw_tf_ready) return;
 
-  // We'll load tfjs and the webgpu backend via importScripts or dynamic import
-  // For content scripts in MV3, we use dynamic script injection
+  // Load core TF.js from CDN
   await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js');
 
+  // Try WebGPU first (best performance on Edge Canary with GPU)
   try {
     await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgpu@4.20.0/dist/tf-backend-webgpu.min.js');
     await tf.setBackend('webgpu');
-    console.log('[NSFW Filter] Using WebGPU backend');
+    await tf.ready();
+    console.log('[NSFW Filter] ✓ WebGPU backend active');
   } catch (e) {
-    console.warn('[NSFW Filter] WebGPU not available, falling back to WebGL:', e);
+    console.warn('[NSFW Filter] WebGPU unavailable, trying WebGL...');
     try {
       await tf.setBackend('webgl');
-      console.log('[NSFW Filter] Using WebGL backend');
+      await tf.ready();
+      console.log('[NSFW Filter] ✓ WebGL backend active');
     } catch (e2) {
-      console.warn('[NSFW Filter] WebGL not available, falling back to CPU:', e2);
+      console.warn('[NSFW Filter] WebGL unavailable, using CPU...');
       await tf.setBackend('cpu');
+      await tf.ready();
+      console.log('[NSFW Filter] ✓ CPU backend active');
     }
   }
 
-  await tf.ready();
   window.__nsfw_tf_ready = true;
-  console.log('[NSFW Filter] TF.js ready with backend:', tf.getBackend());
-}
+})();
 
 function loadScript(src) {
   return new Promise((resolve, reject) => {
+    // Check if already loaded
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) { resolve(); return; }
+    
     const script = document.createElement('script');
     script.src = src;
     script.onload = resolve;
-    script.onerror = reject;
-    document.head.appendChild(script);
+    script.onerror = () => reject(new Error(`Failed to load: ${src}`));
+    (document.head || document.documentElement).appendChild(script);
   });
 }
-
-// Auto-init
-initTF();
